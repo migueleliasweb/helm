@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -68,28 +69,29 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly               bool
-	Force                    bool
-	CreateNamespace          bool
-	DryRun                   bool
-	DisableHooks             bool
-	Replace                  bool
-	Wait                     bool
-	WaitForJobs              bool
-	Devel                    bool
-	DependencyUpdate         bool
-	Timeout                  time.Duration
-	Namespace                string
-	ReleaseName              string
-	GenerateName             bool
-	NameTemplate             string
-	Description              string
-	OutputDir                string
-	Atomic                   bool
-	SkipCRDs                 bool
-	SubNotes                 bool
-	DisableOpenAPIValidation bool
-	IncludeCRDs              bool
+	ClientOnly                bool
+	Force                     bool
+	CreateNamespace           bool
+	DryRun                    bool
+	DisableHooks              bool
+	Replace                   bool
+	Wait                      bool
+	WaitForJobs               bool
+	Devel                     bool
+	DependencyUpdate          bool
+	DependencyUpdateRecursive bool
+	Timeout                   time.Duration
+	Namespace                 string
+	ReleaseName               string
+	GenerateName              bool
+	NameTemplate              string
+	Description               string
+	OutputDir                 string
+	Atomic                    bool
+	SkipCRDs                  bool
+	SubNotes                  bool
+	DisableOpenAPIValidation  bool
+	IncludeCRDs               bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
@@ -457,10 +459,10 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
@@ -661,6 +663,45 @@ OUTER:
 		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+// LocateDependencies locates the dependencies for the given chart (optionally recursively)
+//
+// The returned list of Chart paths is ordered from leaf to root so we can issue updates in
+// the right order when iterating over this list.
+func LocateDependencies(chart *chart.Chart, resursive bool) ([]string, error) {
+	reversedDeps := []string{}
+
+	for _, chartDependency := range chart.Metadata.Dependencies {
+		if strings.HasPrefix(
+			chartDependency.Repository,
+			"file://",
+		) {
+			reversedDeps = append(
+				[]string{chartDependency.Repository},
+				reversedDeps...,
+			)
+
+			chart, err := loader.Load(chartDependency.Repository)
+
+			if err != nil {
+				return []string{}, err
+			}
+
+			subDeps, err := LocateDependencies(chart, resursive)
+
+			if err != nil {
+				return []string{}, err
+			}
+
+			reversedDeps = append(
+				subDeps,
+				reversedDeps...,
+			)
+		}
+	}
+
+	return reversedDeps, nil
 }
 
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.
