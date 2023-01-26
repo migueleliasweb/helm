@@ -669,29 +669,51 @@ OUTER:
 //
 // The returned list of Chart paths is ordered from leaf to root so we can issue updates in
 // the right order when iterating over this list.
-func LocateDependencies(chart *chart.Chart, resursive bool) ([]string, error) {
+func LocateDependencies(baseChartPath string, resursive bool) ([]string, error) {
 	reversedDeps := []string{}
 
-	for _, chartDependency := range chart.Metadata.Dependencies {
+	fmt.Println("chartPath:", baseChartPath)
+
+	baseChart, err := loader.Load(baseChartPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, chartDependency := range baseChart.Metadata.Dependencies {
+
+		fullDepChartPath := chartDependency.Repository
+		isLocalChart := false
+
 		if strings.HasPrefix(
 			chartDependency.Repository,
 			"file://",
 		) {
-			reversedDeps = append(
-				[]string{chartDependency.Repository},
-				reversedDeps...,
+			isLocalChart = true
+
+			fullDepChartPath, err = filepath.Abs(
+				fmt.Sprintf(
+					"%s/%s",
+					baseChartPath, chartDependency.Repository[7:]), // removes "file://"
 			)
 
-			chart, err := loader.Load(chartDependency.Repository)
+			fmt.Println("fullDepChartPath:", fullDepChartPath)
 
 			if err != nil {
-				return []string{}, err
+				return nil, err
 			}
+		}
 
-			subDeps, err := LocateDependencies(chart, resursive)
+		reversedDeps = append(
+			[]string{fullDepChartPath},
+			reversedDeps...,
+		)
+
+		if resursive && isLocalChart {
+			subDeps, err := LocateDependencies(fullDepChartPath, resursive)
 
 			if err != nil {
-				return []string{}, err
+				return nil, err
 			}
 
 			reversedDeps = append(
@@ -700,6 +722,8 @@ func LocateDependencies(chart *chart.Chart, resursive bool) ([]string, error) {
 			)
 		}
 	}
+
+	fmt.Println("reversedDeps:", reversedDeps)
 
 	return reversedDeps, nil
 }

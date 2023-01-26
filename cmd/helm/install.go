@@ -240,7 +240,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 				chartsToUpdate := []string{cp}
 
 				if client.DependencyUpdateRecursive {
-					depsChartPaths, err := action.LocateDependencies(chartRequested, true)
+					depsChartPaths, err := action.LocateDependencies(cp, true)
 
 					if err != nil {
 						return nil, err

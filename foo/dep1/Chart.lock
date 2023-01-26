@@ -1,0 +1,6 @@
+dependencies:
+- name: dep2
+  repository: file://../dep2
+  version: 0.1.0
+digest: sha256:fc131eaa7cdc908acfac1589a2bd6d9408557eb6e5b83ff8d58e70407868125f
+generated: "2023-01-26T14:14:56.346327887+11:00"
