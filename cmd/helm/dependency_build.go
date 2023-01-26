@@ -68,7 +68,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err := man.Build(false)
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}

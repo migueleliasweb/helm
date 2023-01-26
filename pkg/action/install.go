@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -663,63 +662,6 @@ OUTER:
 		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
-}
-
-// LocateDependencies locates the dependencies for the given chart (optionally recursively)
-//
-// The returned list of Chart paths is ordered from leaf to root so we can issue updates in
-// the right order when iterating over this list.
-func LocateDependencies(baseChartPath string, resursive bool) ([]string, error) {
-	reversedDeps := []string{}
-
-	baseChart, err := loader.Load(baseChartPath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, chartDependency := range baseChart.Metadata.Dependencies {
-
-		fullDepChartPath := chartDependency.Repository
-		isLocalChart := false
-
-		if strings.HasPrefix(
-			chartDependency.Repository,
-			"file://",
-		) {
-			isLocalChart = true
-
-			fullDepChartPath, err = filepath.Abs(
-				fmt.Sprintf(
-					"%s/%s",
-					baseChartPath, chartDependency.Repository[7:]), // removes "file://"
-			)
-
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		reversedDeps = append(
-			[]string{fullDepChartPath},
-			reversedDeps...,
-		)
-
-		if resursive && isLocalChart {
-			subDeps, err := LocateDependencies(fullDepChartPath, resursive)
-
-			if err != nil {
-				return nil, err
-			}
-
-			reversedDeps = append(
-				subDeps,
-				reversedDeps...,
-			)
-		}
-	}
-
-	return reversedDeps, nil
 }
 
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.

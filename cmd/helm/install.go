@@ -237,38 +237,22 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate || client.DependencyUpdateRecursive {
-				chartsToUpdate := []string{cp}
-
-				if client.DependencyUpdateRecursive {
-					depsChartPaths, err := action.LocateDependencies(cp, true)
-
-					if err != nil {
-						return nil, err
-					}
-
-					// inject the root chart in the end of the list
-					// to ensure all deps are updated beforehand
-					chartsToUpdate = append(depsChartPaths, chartsToUpdate...)
+				man := &downloader.Manager{
+					Out:              out,
+					ChartPath:        cp,
+					Keyring:          client.ChartPathOptions.Keyring,
+					SkipUpdate:       false,
+					Getters:          p,
+					RepositoryConfig: settings.RepositoryConfig,
+					RepositoryCache:  settings.RepositoryCache,
+					Debug:            settings.Debug,
 				}
-
-				for _, chartPath := range chartsToUpdate {
-					man := &downloader.Manager{
-						Out:              out,
-						ChartPath:        chartPath,
-						Keyring:          client.ChartPathOptions.Keyring,
-						SkipUpdate:       false,
-						Getters:          p,
-						RepositoryConfig: settings.RepositoryConfig,
-						RepositoryCache:  settings.RepositoryCache,
-						Debug:            settings.Debug,
-					}
-					if err := man.Update(); err != nil {
-						return nil, err
-					}
-					// Reload the chart with the updated Chart.lock file.
-					if chartRequested, err = loader.Load(cp); err != nil {
-						return nil, errors.Wrap(err, "failed reloading chart after repo update")
-					}
+				if err := man.Update(client.DependencyUpdateRecursive); err != nil {
+					return nil, err
+				}
+				// Reload the chart with the updated Chart.lock file.
+				if chartRequested, err = loader.Load(cp); err != nil {
+					return nil, errors.Wrap(err, "failed reloading chart after repo update")
 				}
 			} else {
 				return nil, err

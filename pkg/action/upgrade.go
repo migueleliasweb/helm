@@ -101,6 +101,8 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
+	// Get missing dependencies, recursively
+	DependencyUpdateRecursive bool
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
