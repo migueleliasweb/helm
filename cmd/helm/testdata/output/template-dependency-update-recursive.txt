@@ -1,0 +1,18 @@
+---
+# Source: root/charts/dep1/charts/dep2/templates/configmap2.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dep2
+---
+# Source: root/charts/dep1/templates/configmap1.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dep1
+---
+# Source: root/templates/configmaproot.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: root

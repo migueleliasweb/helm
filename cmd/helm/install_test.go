@@ -155,9 +155,9 @@ func TestInstall(t *testing.T) {
 		},
 		// Install chart with update-dependency-recursive
 		{
-			name:   "install chart with missing dependencies",
+			name:   "install chart with dependency update recursive",
 			cmd:    "install --dependency-update-recursive recdeps testdata/testcharts/chart-with-multi-level-deps/root/",
-			golden: "output/chart-with-subchart-update.txt",
+			golden: "output/install-dependency-update-recursive.txt",
 		},
 		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{

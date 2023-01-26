@@ -672,8 +672,6 @@ OUTER:
 func LocateDependencies(baseChartPath string, resursive bool) ([]string, error) {
 	reversedDeps := []string{}
 
-	fmt.Println("chartPath:", baseChartPath)
-
 	baseChart, err := loader.Load(baseChartPath)
 
 	if err != nil {
@@ -696,8 +694,6 @@ func LocateDependencies(baseChartPath string, resursive bool) ([]string, error) 
 					"%s/%s",
 					baseChartPath, chartDependency.Repository[7:]), // removes "file://"
 			)
-
-			fmt.Println("fullDepChartPath:", fullDepChartPath)
 
 			if err != nil {
 				return nil, err
@@ -722,8 +718,6 @@ func LocateDependencies(baseChartPath string, resursive bool) ([]string, error) 
 			)
 		}
 	}
-
-	fmt.Println("reversedDeps:", reversedDeps)
 
 	return reversedDeps, nil
 }

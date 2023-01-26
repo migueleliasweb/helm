@@ -18,9 +18,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -30,6 +32,7 @@ import (
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
@@ -58,6 +61,15 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 						t.Fatal(err)
 					}
 				}
+
+				if tt.preCmd != nil {
+					t.Logf("running preCmd (attempt %d): %s", i+1, tt.cmd)
+					if err := tt.preCmd(t); err != nil {
+						t.Errorf("expected no error executing preCmd, got: '%v'", err)
+						t.FailNow()
+					}
+				}
+
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
 				if tt.wantError && err == nil {
@@ -127,6 +139,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 // cmdTestCase describes a test case that works with releases.
 type cmdTestCase struct {
 	name      string
+	preCmd    func(t *testing.T) error
 	cmd       string
 	golden    string
 	wantError bool
@@ -219,4 +232,46 @@ func TestPluginExitCode(t *testing.T) {
 			t.Errorf("Expected exit code 2: Got %d", exiterr.ExitCode())
 		}
 	}
+}
+
+// resetChartDependencyState completely resets dependency state of a given chart
+// by deleting `Chart.lock` and `charts/`.
+//
+// If `recursive` is set to true, it will recurse into all local dependency charts
+// and do the same.
+func resetChartDependencyState(chartPath string, recursive bool) error {
+	// testdata/testcharts/chart-with-multi-level-deps/root
+
+	chartRequested, err := loader.Load(chartPath)
+
+	if err != nil {
+		return err
+	}
+
+	os.Remove(fmt.Sprintf("%s/Chart.lock", chartPath))
+	os.RemoveAll(fmt.Sprintf("%s/charts/", chartPath))
+
+	if recursive {
+		for _, chartDep := range chartRequested.Metadata.Dependencies {
+			if strings.HasPrefix(
+				chartDep.Repository,
+				"file://",
+			) {
+
+				fullDepPath, err := filepath.Abs(
+					fmt.Sprintf("%s/%s", chartPath, chartDep.Repository[7:]),
+				)
+
+				if err != nil {
+					return err
+				}
+
+				if err := resetChartDependencyState(fullDepPath, recursive); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
