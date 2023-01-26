@@ -240,8 +240,6 @@ func TestPluginExitCode(t *testing.T) {
 // If `recursive` is set to true, it will recurse into all local dependency charts
 // and do the same.
 func resetChartDependencyState(chartPath string, recursive bool) error {
-	// testdata/testcharts/chart-with-multi-level-deps/root
-
 	chartRequested, err := loader.Load(chartPath)
 
 	if err != nil {
